@@ -5,17 +5,22 @@ import React, {
   useMemo,
   createContext,
 } from 'react';
+import ResizableTable from './ResizableTable';
 import DataGrid from 'react-data-grid';
+import { Tab, Tabs, TabList, TabPanel } from 'react-tabs';
+import 'react-tabs/style/react-tabs.css';
+import JsonView from 'react-json-view';
 import { startCapturing, stopCapturing, getMessages } from '../../capturer';
-import { updateMessages } from './messagesHelper';
+import { updateMessages, getParsedMessage } from './messagesHelper';
 import { generateColumns } from './columnsHelper';
-import './MessagesTab.scss';
+import './MessagesView.scss';
+import { createStringLiteral } from 'typescript';
 
 const INTERVAL = 500;
 
 const FilterContext = createContext(undefined);
 
-const MessagesTab = () => {
+const MessagesView = () => {
   const [capturing, setCapturing] = useState(false);
   const [messages, setMessages] = useState([]);
   const [bottomRow, setBottomRow] = useState(-1);
@@ -30,6 +35,7 @@ const MessagesTab = () => {
   });
   const [services, setServices] = useState([]); // all kinds of services in messages
   const [methods, setMethods] = useState([]); // all kinds of methods in messages
+  const [selectedRow, setSelectedRow] = useState();
 
   const timer = useRef(null);
   const gridRef = useRef(null);
@@ -199,22 +205,56 @@ const MessagesTab = () => {
           Reset Filters
         </button>
       </div>
-      <FilterContext.Provider value={filters}>
-        <DataGrid
-          className={`rdg-light ${
-            filters.enabled ? 'filter-container' : undefined
-          }`}
-          style={{ fontSize: '10px', height: 'calc(100vh - 40px' }}
-          ref={gridRef}
-          columns={columns}
-          rows={filteredRows}
-          rowKeyGetter={(row) => row.id}
-          headerRowHeight={filters.enabled ? 52 : 25}
-          rowHeight={20}
-        />
-      </FilterContext.Provider>
+      <ResizableTable minCellWidth={300}>
+        <FilterContext.Provider value={filters}>
+          <DataGrid
+            className={`rdg-light ${
+              filters.enabled ? 'filter-container' : undefined
+            }`}
+            style={{ fontSize: '10px', height: 'calc(100vh - 42px)' }}
+            ref={gridRef}
+            columns={columns}
+            rows={filteredRows}
+            rowKeyGetter={(row) => row.id}
+            headerRowHeight={filters.enabled ? 52 : 25}
+            rowHeight={20}
+            onRowClick={(row) => {
+              setSelectedRow(row);
+            }}
+          />
+        </FilterContext.Provider>
+        <Tabs
+          forceRenderTabPanel={true}
+          style={{ height: 'calc(100vh - 42px)', overflow: 'auto' }}
+        >
+          <TabList>
+            <Tab>Send</Tab>
+            <Tab>Receive</Tab>
+          </TabList>
+
+          <TabPanel>
+            <JsonView
+              className="json-view"
+              src={getParsedMessage(selectedRow, 'send')}
+              name={false}
+              collapsed={1}
+              displayDataTypes={false}
+              enableClipboard={false}
+            />
+          </TabPanel>
+          <TabPanel>
+            <JsonView
+              src={getParsedMessage(selectedRow, 'receive')}
+              name={false}
+              collapsed={1}
+              displayDataTypes={false}
+              enableClipboard={false}
+            />
+          </TabPanel>
+        </Tabs>
+      </ResizableTable>
     </div>
   );
 };
 
-export default MessagesTab;
+export default MessagesView;
